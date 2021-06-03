@@ -1,2 +1,4 @@
 # copter-ISMC
-quadcopter plant, integral sliding mode control, position tracking, python
+
+plant : quadcopter
+Controller : integral sliding mode, pd
