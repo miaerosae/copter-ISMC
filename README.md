@@ -1,4 +1,4 @@
 # copter-ISMC
 
-plant : quadcopter
+plant : quadcopter / 
 Controller : integral sliding mode, pd
