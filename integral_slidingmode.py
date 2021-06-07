@@ -108,17 +108,21 @@ class IntegralSMC(BaseEnv):
         # sliding surface
         s1 = e_zd + k12*e_z + k11*p1 - k12*(z0-z0_r) - (z0d-z0d_r)
         s2 = e_phid + k22*e_phi + k21*p2 - k22*(phi0-phi0_r) - (phi0d-phi0d_r)
-        s3 = e_thetad + k32*e_theta + k31*p3 - k32*(theta0-theta0_r) - (theta0d-theta0d_r)
+        s3 = e_thetad + k32*e_theta + k31*p3 - k32*(theta0-theta0_r) \
+            - (theta0d-theta0d_r)
         s4 = e_psid + k42*e_psi + k41*p4 - k42*(psi0-psi0_r) - (psi0d-psi0d_r)
         # get FM
         F = h1*(zdd_r - k12*e_zd - k11*e_z - g) - h1*kc1*sat(s1, PHI1)
-        M1 = h2*(phidd_r - k22*e_phid - k21*e_phi - (Iyy-Izz)/Ixx*thetad*psid) - h2*kc2*sat(s2, PHI2)
-        M2 = h3*(thetadd_r - k32*e_thetad - k31*e_theta - (Izz-Ixx)/Iyy*phid*psid) - h3*kc3*sat(s3, PHI3)
-        M3 = h4*(psidd_r - k42*e_psid - k41*e_psi - (Ixx-Iyy)/Izz*phid*thetad) - h4*kc4*sat(s4, PHI4)
+        M1 = h2*(phidd_r - k22*e_phid - k21*e_phi - (Iyy-Izz)/Ixx*thetad*psid) \
+            - h2*kc2*sat(s2, PHI2)
+        M2 = h3*(thetadd_r - k32*e_thetad - k31*e_theta
+            - (Izz-Ixx)/Iyy*phid*psid) - h3*kc3*sat(s3, PHI3)
+        M3 = h4*(psidd_r - k42*e_psid - k41*e_psi - (Ixx-Iyy)/Izz*phid*thetad) \
+            - h4*kc4*sat(s4, PHI4)
 
         action = np.vstack((F, M1, M2, M3))
-
-        return action
+        sliding = np.vstack((s1, s2, s3, s4))
+        return action, sliding
 
 
 if __name__ == "__main__":
