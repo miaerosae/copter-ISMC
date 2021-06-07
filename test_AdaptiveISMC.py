@@ -136,15 +136,19 @@ def exp1_plot():
     plt.tight_layout()
 
     fig2 = plt.figure()
-    ax1 = fig2.add_subplot(4, 1, 1)
-    ax2 = fig2.add_subplot(4, 1, 2, sharex=ax1)
-    ax3 = fig2.add_subplot(4, 1, 3, sharex=ax1)
-    ax4 = fig2.add_subplot(4, 1, 4, sharex=ax1)
+    ax1 = fig2.add_subplot(6, 1, 1)
+    ax2 = fig2.add_subplot(6, 1, 2, sharex=ax1)
+    ax3 = fig2.add_subplot(6, 1, 3, sharex=ax1)
+    ax4 = fig2.add_subplot(6, 1, 4, sharex=ax1)
+    ax5 = fig2.add_subplot(6, 1, 5, sharex=ax1)
+    ax6 = fig2.add_subplot(6, 1, 6, sharex=ax1)
 
     ax1.plot(data['t'], data['rotors'].squeeze()[:, 0])
     ax2.plot(data['t'], data['rotors'].squeeze()[:, 1])
     ax3.plot(data['t'], data['rotors'].squeeze()[:, 2])
     ax4.plot(data['t'], data['rotors'].squeeze()[:, 3])
+    ax5.plot(data['t'], data['rotors'].squeeze()[:, 4])
+    ax6.plot(data['t'], data['rotors'].squeeze()[:, 5])
 
     ax1.set_ylabel('rotor1')
     ax1.grid(True)
@@ -154,7 +158,11 @@ def exp1_plot():
     ax3.grid(True)
     ax4.set_ylabel('rotor4')
     ax4.grid(True)
-    ax4.set_xlabel('Time [sec]')
+    ax5.set_ylabel('rotor5')
+    ax5.grid(True)
+    ax6.set_ylabel('rotor6')
+    ax6.grid(True)
+    ax6.set_xlabel('Time [sec]')
 
     plt.tight_layout()
 

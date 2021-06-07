@@ -12,10 +12,17 @@ class Mixer:
     def __init__(self, d, c):
         self.d = d
         self.c = c
-        self.B = np.array([[1, 1, 1, 1],
-                           [0, -d, 0, d],
-                           [d, 0, -d, 0],
-                           [-c, c, -c, c]])
+        b = 1
+        self.B = np.array(([b, b, b, b, b, b],
+                           [-b*d, b*d, b*d/2, -b*d/2, -b*d/2, b*d/2],
+                           [0, 0, b*d*np.sqrt(3)/2, - b*d*np.sqrt(3)/2,
+                            b*d*np.sqrt(3)/2, -b*d*np.sqrt(3)/2],
+                           [c, -c, c, -c, -c, c]))
+
+        # self.B = np.array([[1, 1, 1, 1],
+        #                    [0, -d, 0, d],
+        #                    [d, 0, -d, 0],
+        #                    [-c, c, -c, c]])
         self.Binv = np.linalg.pinv(self.B)
 
     def inverse(self, rotors):

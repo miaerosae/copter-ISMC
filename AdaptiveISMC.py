@@ -99,8 +99,8 @@ class AdaptiveISMC(BaseEnv):
 
         return dP, dgamma
 
-    def set_dot(self, obs, ref, p):
-        dots = self.deriv(obs, ref, p)
+    def set_dot(self, obs, ref, sliding):
+        dots = self.deriv(obs, ref, sliding)
         self.P.dot, self.gamma.dot = dots
 
     def get_FM(self, obs, ref, p, gamma, K, Kc, PHI, t):
