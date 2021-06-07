@@ -13,7 +13,7 @@ def sat(s, eps):
         return s/eps
 
 
-class ActiveISMC(BaseEnv):
+class AdaptiveISMC(BaseEnv):
     '''
     reference
     Ban Wang, Youmin Zhang, "An Adaptive Fault-Tolerant Sliding Mode Control

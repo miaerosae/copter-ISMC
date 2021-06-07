@@ -6,7 +6,7 @@ import fym.logging
 from fym.core import BaseEnv, BaseSystem
 
 from copter import Copter
-from Active_ISMC import ActiveISMC
+from AdaptiveISMC import AdaptiveISMC
 
 
 class Env(BaseEnv):
@@ -14,18 +14,18 @@ class Env(BaseEnv):
         super().__init__(solver="odeint", max_t=10, dt=5, ode_step_len=100)
         self.plant = Copter()
         ic = np.vstack((0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-        pos_des0 = np.vstack((1, -1, 0))
+        pos_des0 = np.vstack((1, -1, -2))
         vel_des0 = np.vstack((0, 0, 0))
         angle_des0 = np.vstack((0, 0, 0))
         omega_des0 = np.vstack((0, 0, 0))
         ref0 = np.vstack((pos_des0, vel_des0, angle_des0, omega_des0))
 
-        self.controller = ActiveISMC(self.plant.J,
-                                     self.plant.m,
-                                     self.plant.g,
-                                     self.plant.d,
-                                     ic,
-                                     ref0)
+        self.controller = AdaptiveISMC(self.plant.J,
+                                       self.plant.m,
+                                       self.plant.g,
+                                       self.plant.d,
+                                       ic,
+                                       ref0)
 
     def step(self):
         *_, done = self.update()
@@ -38,7 +38,7 @@ class Env(BaseEnv):
         return rotors
 
     def get_ref(self, t, x):
-        pos_des = np.vstack((1, -1, -0))
+        pos_des = np.vstack((1, -1, -2))
         vel_des = np.vstack((0, 0, 0))
         # pos_des = np.vstack((cos(t), sin(t), -t))
         # vel_des = np.vstack((-sin(t), cos(t), -1))
