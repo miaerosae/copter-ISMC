@@ -65,7 +65,7 @@ class Env(BaseEnv):
 
     def set_dot(self, t):
         x = self.plant.state
-        p, gamma = self.controller.state[0:4], self.controller.state[4:]
+        p, gamma = self.controller.observe_list()
         forces, rotors, ref, sliding = self._get_derivs(t, x, p, gamma)
 
         self.plant.set_dot(t, rotors)
