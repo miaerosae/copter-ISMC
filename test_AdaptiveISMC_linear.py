@@ -51,7 +51,7 @@ class Env(BaseEnv):
     def _get_derivs(self, t, x, p, gamma):
         ref = self.get_ref(t, x)
 
-        K = np.array([[25, 10],
+        K = np.array([[25, 20],
                       [100, 20],
                       [100, 20],
                       [25, 10]])
