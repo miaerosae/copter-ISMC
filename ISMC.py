@@ -28,7 +28,10 @@ class IntegralSMC_linear(BaseEnv):
         self.ic = ic
         self.ref0 = ref0
         self.J, self.m, self.g, self.d = J, m, g, d
-        self.P = BaseSystem(np.vstack((self.ic[2] - self.ref0[2],
+        # error integral of x, y, z, roll, pitch, yaw
+        self.P = BaseSystem(np.vstack((self.ic[0] - self.ref0[0],
+                                       self.ic[1] - self.ref0[0],
+                                       self.ic[2] - self.ref0[2],
                                        self.ic[6] - self.ref0[6],
                                        self.ic[7] - self.ref0[7],
                                        self.ic[8] - self.ref0[8])))
@@ -36,13 +39,15 @@ class IntegralSMC_linear(BaseEnv):
     def deriv(self, obs, ref):
         # observation
         obs = np.vstack((obs))
-        z = obs[2]
+        x, y, z = obs[0:3]
         phi, theta, psi = obs[6:9]
         # reference
         ref = np.vstack((ref))
-        z_r = ref[2]
+        x_r, y_r, z_r = ref[0:3]
         phi_r, theta_r, psi_r = ref[6:9]
-        dP = np.vstack((z - z_r,
+        dP = np.vstack((x - x_r,
+                        y - y_r,
+                        z - z_r,
                         phi - phi_r,
                         theta - theta_r,
                         psi - psi_r))
@@ -55,7 +60,7 @@ class IntegralSMC_linear(BaseEnv):
 
     def get_FM(self, obs, ref, p, K, Kc, PHI, t):
         p = np.vstack((p))
-        p1, p2, p3, p4 = p
+        px, py, pz, pphi, ptheta, ppsi = p
         K1, K2, K3, K4 = K
         k11, k12 = K1
         k21, k22 = K2
@@ -90,8 +95,10 @@ class IntegralSMC_linear(BaseEnv):
         e_xd = xd - xd_r
         e_y = y - y_r
         e_yd = yd - yd_r
-        theta_r = (0.19*e_x + 0.2*e_xd)
-        phi_r = -(0.19*e_y + 0.2*e_yd)
+        kp1, kd1, ki1 = np.array([0.5, 0.3, 0.2])
+        kp2, kd2, ki2 = np.array([0.5, 0.3, 0.2])
+        phi_r = -(kp1*e_y + kd1*e_yd + ki1*py)
+        theta_r = kp2*e_x + kd2*e_xd + ki2*px
         # error definition
         e_z = z - z_r
         e_zd = zd - zd_r
@@ -107,11 +114,11 @@ class IntegralSMC_linear(BaseEnv):
         h3 = Iyy/d
         h4 = Izz
         # sliding surface
-        s1 = e_zd + k12*e_z + k11*p1 - k12*(z0-z0_r) - (z0d-z0d_r)
-        s2 = e_phid + k22*e_phi + k21*p2 - k22*(phi0-phi0_r) - (phi0d-phi0d_r)
-        s3 = e_thetad + k32*e_theta + k31*p3 - k32*(theta0-theta0_r) \
+        s1 = e_zd + k12*e_z + k11*pz - k12*(z0-z0_r) - (z0d-z0d_r)
+        s2 = e_phid + k22*e_phi + k21*pphi - k22*(phi0-phi0_r) - (phi0d-phi0d_r)
+        s3 = e_thetad + k32*e_theta + k31*ptheta - k32*(theta0-theta0_r) \
             - (theta0d-theta0d_r)
-        s4 = e_psid + k42*e_psi + k41*p4 - k42*(psi0-psi0_r) - (psi0d-psi0d_r)
+        s4 = e_psid + k42*e_psi + k41*ppsi - k42*(psi0-psi0_r) - (psi0d-psi0d_r)
         # get FM
         F = h1*(zdd_r - k12*e_zd - k11*e_z - g) - h1*kc1*sat(s1, PHI1)
         M1 = h2*(phidd_r - k22*e_phid - k21*e_phi - (Iyy-Izz)/Ixx*thetad*psid) \
@@ -140,7 +147,10 @@ class IntegralSMC_nonlinear(BaseEnv):
         self.ic_ = np.vstack((ic[0:6], np.vstack(quat2angle(ic[6:10])[::-1]), ic[10:]))
         self.ref0_ = np.vstack((ref0[0:6], np.vstack(quat2angle(ref0[6:10])[::-1]), ref0[10:]))
         self.J, self.m, self.g, self.d = J, m, g, d
-        self.P = BaseSystem(np.vstack((self.ic_[2] - self.ref0_[2],
+        # error integral of x, y, z, roll, pitch, yaw
+        self.P = BaseSystem(np.vstack((self.ic_[0] - self.ref0_[0],
+                                       self.ic_[1] - self.ref0_[1],
+                                       self.ic_[2] - self.ref0_[2],
                                        self.ic_[6] - self.ref0_[6],
                                        self.ic_[7] - self.ref0_[7],
                                        self.ic_[8] - self.ref0_[8])))
@@ -149,14 +159,16 @@ class IntegralSMC_nonlinear(BaseEnv):
         # observation
         obs = np.vstack((obs))
         obs_ = np.vstack((obs[0:6], np.vstack(quat2angle(obs[6:10])[::-1]), obs[10:]))
-        z = obs_[2]
+        x, y, z = obs_[0:3]
         phi, theta, psi = obs_[6:9]
         # reference
         ref = np.vstack((ref))
         ref_ = np.vstack((ref[0:6], np.vstack(quat2angle(ref[6:10])[::-1]), ref[10:]))
-        z_r = ref_[2]
+        x_r, y_r, z_r = ref_[0:3]
         phi_r, theta_r, psi_r = ref_[6:9]
-        dP = np.vstack((z - z_r,
+        dP = np.vstack((x - x_r,
+                        y - y_r,
+                        z - z_r,
                         phi - phi_r,
                         theta - theta_r,
                         psi - psi_r))
@@ -169,7 +181,7 @@ class IntegralSMC_nonlinear(BaseEnv):
 
     def get_FM(self, obs, ref, p, K, Kc, PHI, t):
         p = np.vstack((p))
-        p1, p2, p3, p4 = p
+        px, py, pz, pphi, ptheta, ppsi = p
         K1, K2, K3, K4 = K
         k11, k12 = K1
         k21, k22 = K2
@@ -206,8 +218,10 @@ class IntegralSMC_nonlinear(BaseEnv):
         e_xd = xd - xd_r
         e_y = y - y_r
         e_yd = yd - yd_r
-        theta_r = (0.19*e_x + 0.2*e_xd)/abs(x_r)
-        phi_r = -(0.19*e_y + 0.2*e_yd)/abs(y_r)
+        kp1, kd1, ki1 = np.array([0.25, 0.3, 0.1])
+        kp2, kd2, ki2 = np.array([0.25, 0.3, 0.1])
+        phi_r = -(kp1*e_y + kd1*e_yd + ki1*py)
+        theta_r = kp2*e_x + kd2*e_xd + ki2*px
         # error definition
         e_z = z - z_r
         e_zd = zd - zd_r
@@ -221,12 +235,12 @@ class IntegralSMC_nonlinear(BaseEnv):
         h1 = -m/cos(phi)/cos(theta)
         h2 = Ixx/d
         h3 = Iyy/d
-        h4 = Izz/d
+        h4 = Izz
         # sliding surface
-        s1 = e_zd + k12*e_z + k11*p1 - k12*(z0-z0_r) - (z0d-z0d_r)
-        s2 = e_phid + k22*e_phi + k21*p2 - k22*(phi0-phi0_r) - (phi0d-phi0d_r)
-        s3 = e_thetad + k32*e_theta + k31*p3 - k32*(theta0-theta0_r) - (theta0d-theta0d_r)
-        s4 = e_psid + k42*e_psi + k41*p4 - k42*(psi0-psi0_r) - (psi0d-psi0d_r)
+        s1 = e_zd + k12*e_z + k11*pz - k12*(z0-z0_r) - (z0d-z0d_r)
+        s2 = e_phid + k22*e_phi + k21*pphi - k22*(phi0-phi0_r) - (phi0d-phi0d_r)
+        s3 = e_thetad + k32*e_theta + k31*ptheta - k32*(theta0-theta0_r) - (theta0d-theta0d_r)
+        s4 = e_psid + k42*e_psi + k41*ppsi - k42*(psi0-psi0_r) - (psi0d-psi0d_r)
         # get FM
         F = h1*(zdd_r - k12*e_zd - k11*e_z - g) - h1*kc1*sat(s1, PHI1)
         M1 = h2*(phidd_r - k22*e_phid - k21*e_phi - (Iyy-Izz)/Ixx*thetad*psid) - h2*kc2*sat(s2, PHI2)

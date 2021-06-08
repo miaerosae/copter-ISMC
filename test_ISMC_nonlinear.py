@@ -39,7 +39,13 @@ class Env(BaseEnv):
         return rotors
 
     def get_ref(self, t, x):
-        ref = np.vstack((self.pos_des, self.vel_des, self.quat_des, self.omega_des))
+        pos_des = np.vstack((-1, 1, -2))
+        vel_des = np.vstack((0, 0, 0))
+        # pos_des = np.vstack((cos(t), sin(t), -t))
+        # vel_des = np.vstack((-sin(t), cos(t), -1))
+        quat_des = np.vstack((1, 0, 0, 0))
+        omega_des = np.zeros((3, 1))
+        ref = np.vstack((pos_des, vel_des, quat_des, omega_des))
 
         return ref
 
@@ -47,8 +53,8 @@ class Env(BaseEnv):
         ref = self.get_ref(t, x)
 
         K = np.array([[25, 20],
-                      [200, 10],
-                      [200, 10],
+                      [200, 20],
+                      [200, 20],
                       [25, 10]])
         Kc = np.vstack((1, 1, 1, 1))
         PHI = np.vstack([1] * 4)
@@ -103,8 +109,8 @@ def exp1_plot():
     ax3 = fig.add_subplot(4, 1, 3, sharex=ax1)
     ax4 = fig.add_subplot(4, 1, 4, sharex=ax1)
 
-    ax1.plot(data['t'], data['plant']['pos'].squeeze(), "k-", label="plant")
-    ax1.plot(data["t"], data["ref"][:, 0, 0], "r--", label="plant (cmd)")
+    ax1.plot(data['t'], data['plant']['pos'].squeeze(), label="plant")
+    ax1.plot(data["t"], data["ref"][:, 0, 0], "r--", label="x (cmd)")
     ax1.plot(data["t"], data["ref"][:, 1, 0], "r--", label="y (cmd)")
     ax1.plot(data["t"], data["ref"][:, 2, 0], "r--", label="z (cmd)")
     ax2.plot(data['t'], data['plant']['vel'].squeeze())
