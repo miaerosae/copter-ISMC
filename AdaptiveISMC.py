@@ -35,7 +35,7 @@ class AdaptiveISMC_linear(BaseEnv):
         self.gamma = BaseSystem(np.vstack((-m/cos(ic[6])/cos(ic[7]),
                                            J[0, 0]/d,
                                            J[1, 1]/d,
-                                           J[2, 2]/d)))
+                                           J[2, 2])))
 
     def deriv(self, obs, ref, sliding):
         J, m, g = self.J, self.m, self.g

@@ -105,7 +105,7 @@ class IntegralSMC_linear(BaseEnv):
         h1 = -m/cos(phi)/cos(theta)
         h2 = Ixx/d
         h3 = Iyy/d
-        h4 = Izz/d
+        h4 = Izz
         # sliding surface
         s1 = e_zd + k12*e_z + k11*p1 - k12*(z0-z0_r) - (z0d-z0d_r)
         s2 = e_phid + k22*e_phi + k21*p2 - k22*(phi0-phi0_r) - (phi0d-phi0d_r)
