@@ -8,25 +8,28 @@ from fym.utils.rot import angle2quat, quat2angle
 
 from decmk.model.copter import Copter_nonlinear
 from decmk.agents.AdaptiveISMC import AdaptiveISMC_nonlinear
-from decmk.agents.utils import CA, LoE
+from decmk.agents.utils import CA, LoE, FDI
 from copy import deepcopy
 
 
 class Env(BaseEnv):
     def __init__(self):
-        super().__init__(solver="odeint", max_t=20, dt=10, ode_step_len=100)
-        self.plant = Copter_nonlinear()
+        super().__init__(solver="odeint", max_t=10, dt=5, ode_step_len=100)
 
         # Define faults
         self.actuator_faults = [
-            LoE(time=3, index=0, level=0.0)
+            LoE(time=0, index=1, level=0.0),
+            # LoE(time=10, index=3, level=0.3)
         ]
 
         # Define initial condition and reference at t=0
         ic = np.vstack((0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0))
-        ref0 = np.vstack((1, -1, -2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0))
+        ref0 = np.vstack((1, 0, -2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0))
 
         # Define agents
+        self.plant = Copter_nonlinear()
+        n = self.plant.mixer.B.shape[1]
+        self.fdi = FDI(numact=n)
         self.controller = AdaptiveISMC_nonlinear(self.plant.J,
                                                  self.plant.m,
                                                  self.plant.g,
@@ -39,12 +42,6 @@ class Env(BaseEnv):
         *_, done = self.update()
         return done
 
-    def control_allocation(self, t, forces):
-        Bf = self.CA.get(t, self.actuator_faults)
-        rotors = Bf.dot(forces)
-
-        return rotors
-
     def get_ref(self, t, x):
         # if t <= 5:
         #     pos_des = np.vstack((0, 0, -5))*10
@@ -54,26 +51,43 @@ class Env(BaseEnv):
         #     pos_des = np.vstack((0, 0, -5))*10
         # else:
         #     pos_des = np.vstack((0, 0, 0))
-        # pos_des = np.vstack((1, -1, -2))
-        # vel_des = np.vstack((0, 0, 0))
-        pos_des = np.vstack((cos(t), sin(t), -t))
-        vel_des = np.vstack((-sin(t), cos(t), -1))
+        pos_des = np.vstack((1, 0, -2))
+        vel_des = np.vstack((0, 0, 0))
+        # pos_des = np.vstack((cos(t), sin(t), -t))
+        # vel_des = np.vstack((-sin(t), cos(t), -1))
         quat_des = np.vstack((1, 0, 0, 0))
         omega_des = np.zeros((3, 1))
         ref = np.vstack((pos_des, vel_des, quat_des, omega_des))
 
         return ref
 
+    def control_allocation(self, t, forces, W):
+        fault_index = self.fdi.get_index(W)
+
+        if len(fault_index) == 0:
+            rotors = np.linalg.pinv(self.plant.mixer.B.dot(W)).dot(forces)
+        else:
+            Bf = self.CA.get(fault_index)
+            rotors = np.linalg.pinv(Bf.dot(W)).dot(forces)
+
+        return rotors
+
     def _get_derivs(self, t, x, p, gamma):
         ref = self.get_ref(t, x)
+        W = self.fdi.state
+        fault_index = self.fdi.get_index(W)
 
         forces, sliding = self.controller.get_FM(x, ref, p, gamma, t)
 
         # Controller
-        rotors_cmd = self.control_allocation(t, forces)
+        rotors_cmd = self.control_allocation(t, forces, W)
 
         _rotors = np.clip(rotors_cmd, 0, self.plant.rotor_max)
         rotors = deepcopy(_rotors)
+
+        breakpoint()
+        _rotors[fault_index] = 1
+        W = self.fdi.get_W(rotors, _rotors)
 
         return rotors_cmd, rotors, forces, ref, sliding
 
@@ -96,7 +110,7 @@ class Env(BaseEnv):
             self._get_derivs(t, x_flat, ctrl_flat[0], ctrl_flat[1])
 
         return dict(t=t, x=x, rotors=rotors, rotors_cmd=rotors_cmd,
-                    ref=ref, gamma=ctrl_flat[1])
+                    ref=ref, gamma=ctrl_flat[1], forces=forces)
 
 
 def run():
@@ -176,8 +190,10 @@ def exp1_plot():
     plt.plot(data["t"], data["x"]["vel"].squeeze())
     plt.legend([r'$u$', r'$v$', r'$w$'])
     plt.subplot(413, sharex=ax)
-    plt.plot(data["t"], np.transpose(quat2angle(np.transpose(data["x"]["quat"].squeeze()))))
-    plt.legend([r'$psi$', r'$theta$', r'$phi$'])
+    plt.plot(data["t"], data["x"]["quat"].squeeze())
+    plt.legend([r'$q0$', r'$q1$', r'$q2$', r'$q3$'])
+    # plt.plot(data["t"], np.transpose(quat2angle(np.transpose(data["x"]["quat"].squeeze()))))
+    # plt.legend([r'$psi$', r'$theta$', r'$phi$'])
     plt.subplot(414, sharex=ax)
     plt.plot(data["t"], data["x"]["omega"].squeeze())
     plt.legend([r'$p$', r'$q$', r'$r$'])
@@ -219,9 +235,32 @@ def exp1_plot():
     ax4.set_xlabel('Time [sec]')
 
     plt.tight_layout()
+
+    fig4 = plt.figure()
+    ax1 = fig4.add_subplot(4, 1, 1)
+    ax2 = fig4.add_subplot(4, 1, 2, sharex=ax1)
+    ax3 = fig4.add_subplot(4, 1, 3, sharex=ax1)
+    ax4 = fig4.add_subplot(4, 1, 4, sharex=ax1)
+
+    ax1.plot(data['t'], data['forces'].squeeze()[:, 0])
+    ax2.plot(data['t'], data['forces'].squeeze()[:, 1])
+    ax3.plot(data['t'], data['forces'].squeeze()[:, 2])
+    ax4.plot(data['t'], data['forces'].squeeze()[:, 3])
+
+    ax1.set_ylabel('F')
+    ax1.grid(True)
+    ax2.set_ylabel('M1')
+    ax2.grid(True)
+    ax3.set_ylabel('M2')
+    ax3.grid(True)
+    ax4.set_ylabel('M3')
+    ax4.grid(True)
+    ax4.set_xlabel('Time [sec]')
+
+    plt.tight_layout()
     plt.show()
 
 
 if __name__ == "__main__":
-    #` exp1()
+    exp1()
     exp1_plot()
