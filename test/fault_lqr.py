@@ -8,7 +8,7 @@ from fym.utils.rot import angle2quat, quat2angle
 
 from decmk.model.copter import Copter_nonlinear
 from decmk.agents.lqr import LQRController
-from decmk.agents.utils import CA, LoE, FDI
+from decmk.agents.utils import LoE, FDI
 from copy import deepcopy
 
 
@@ -18,7 +18,7 @@ class Env(BaseEnv):
 
         # Define faults
         self.actuator_faults = [
-            LoE(time=5, index=0, level=0.2),
+            LoE(time=5, index=0, level=0.1),
             # LoE(time=14, index=3, level=0.3)
         ]
 
@@ -29,7 +29,6 @@ class Env(BaseEnv):
         self.controller = LQRController(self.plant.Jinv,
                                         self.plant.m,
                                         self.plant.g)
-        self.CA = CA(self.plant.mixer.B)
 
     def step(self):
         *_, done = self.update()
@@ -67,8 +66,9 @@ class Env(BaseEnv):
 
     def set_dot(self, t):
         x = self.plant.state
+        effectiveness = np.array([1.] * self.n)
         for act_fault in self.actuator_faults:
-            effectiveness = act_fault.get_effectiveness(t, self.n)
+            effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
         W = np.diag(effectiveness)
         rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, W)
@@ -77,8 +77,9 @@ class Env(BaseEnv):
 
     def logger_callback(self, i, t, y, *args):
         x = self.plant.state
+        effectiveness = np.array([1.] * self.n)
         for act_fault in self.actuator_faults:
-            effectiveness = act_fault.get_effectiveness(t, self.n)
+            effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
         W = np.diag(effectiveness)
         rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, W)

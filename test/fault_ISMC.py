@@ -8,18 +8,18 @@ from fym.utils.rot import angle2quat, quat2angle
 
 from decmk.model.copter import Copter_nonlinear
 from decmk.agents.ISMC import IntegralSMC_nonlinear
-from decmk.agents.utils import CA, LoE, FDI
+from decmk.agents.utils import LoE, FDI
 from copy import deepcopy
 
 
 class Env(BaseEnv):
     def __init__(self):
-        super().__init__(solver="odeint", max_t=10, dt=5, ode_step_len=100)
+        super().__init__(solver="odeint", max_t=20, dt=10, ode_step_len=100)
 
         # Define faults
         self.actuator_faults = [
-            LoE(time=5, index=0, level=0.2),
-            # LoE(time=14, index=3, level=0.3)
+            LoE(time=0, index=0, level=0.1),
+            LoE(time=0, index=3, level=0.3)
         ]
 
         # Define initial condition and reference at t=0
@@ -36,7 +36,6 @@ class Env(BaseEnv):
                                                 self.plant.d,
                                                 ic,
                                                 ref0)
-        self.CA = CA(self.plant.mixer.B)
 
     def step(self):
         *_, done = self.update()
@@ -76,8 +75,9 @@ class Env(BaseEnv):
         x = self.plant.state
         p = self.controller.observe_list()
 
+        effectiveness = np.array([1.] * self.n)
         for act_fault in self.actuator_faults:
-            effectiveness = act_fault.get_effectiveness(t, self.n)
+            effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
         W = np.diag(effectiveness)
 
@@ -91,8 +91,9 @@ class Env(BaseEnv):
         x_flat = self.plant.observe_vec(y[self.plant.flat_index])
         p = self.controller.observe_list(y[self.controller.flat_index])
         x = states["plant"]
+        effectiveness = np.array([1.] * self.n)
         for act_fault in self.actuator_faults:
-            effectiveness = act_fault.get_effectiveness(t, self.n)
+            effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
         W = np.diag(effectiveness)
         rotors_cmd, rotors, forces, ref = self._get_derivs(t, x_flat, p, W)

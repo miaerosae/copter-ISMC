@@ -11,8 +11,7 @@ class LoE:
         effectiveness = self.get_effectiveness(t, u.shape[0])
         return u * effectiveness.reshape(4, 1)  # , effectiveness
 
-    def get_effectiveness(self, t, n):
-        effectiveness = np.array([1.] * n)
+    def get_effectiveness(self, t, effectiveness):
         if t >= self.time:
             effectiveness[self.index] = self.level
         return effectiveness
