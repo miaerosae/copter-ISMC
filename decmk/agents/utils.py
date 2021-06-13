@@ -1,35 +1,6 @@
 import numpy as np
 
-from fym.core import BaseEnv, BaseSystem
 
-
-# class CA():
-#     '''
-#     Halim Alwi, Christopher Edwards, "Fault Tolerant conttol using sliding
-#     modes with on-line control allocation". Automatica, vol. 44, np. 7,
-#     pp. 1859-1866, 2008
-#     '''
-#     def __init__(self, B):
-#         self.B = B
-
-#     def get(self, t, actuator_faults):
-#         # set effectiveness matrix
-#         W = np.diag([1.0] * self.B.shape[1])
-#         n = len(actuator_faults)
-#         for i in range(n):
-#             if t < actuator_faults[i].time:
-#                 W = W
-#             else:
-#                 a = actuator_faults[i].index
-#                 W[a, a] = actuator_faults[i].level
-#         # set pseudo-inverse
-#         Bf = np.linalg.inv(self.B)
-#         for i in range(n):
-#             if t >= actuator_faults[i].time:
-#                 Bf = W.dot(np.transpose(self.B))\
-#                     .dot(np.linalg.pinv(self.B.dot(W).dot(np.transpose(self.B))))
-
-#         return Bf
 class CA():
     def __init__(self, B):
         self.B = B
@@ -48,10 +19,17 @@ class LoE:
         self.level = level
 
     def get(self, t, u):
-        effectiveness = np.ones_like(u)
+        effectiveness = self.get_effectiveness(t, u.shape[0])
+        # effectiveness = np.ones_like(u)
+        # if t >= self.time:
+        #     effectiveness[self.index] = self.level
+        return u * effectiveness.reshape(4, 1)  # , effectiveness
+
+    def get_effectiveness(self, t, n):
+        effectiveness = np.array([1] * n)
         if t >= self.time:
             effectiveness[self.index] = self.level
-        return u * effectiveness
+        return effectiveness
 
 
 class FDI:

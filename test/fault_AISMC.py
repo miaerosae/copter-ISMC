@@ -18,18 +18,18 @@ class Env(BaseEnv):
 
         # Define faults
         self.actuator_faults = [
-            LoE(time=0, index=1, level=0.0),
+            LoE(time=0, index=0, level=0.0),
             # LoE(time=10, index=3, level=0.3)
         ]
 
         # Define initial condition and reference at t=0
         ic = np.vstack((0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0))
-        ref0 = np.vstack((1, 0, -2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0))
+        ref0 = np.vstack((0, 0, -2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0))
 
         # Define agents
         self.plant = Copter_nonlinear()
-        n = self.plant.mixer.B.shape[1]
-        self.fdi = FDI(numact=n)
+        self.n = self.plant.mixer.B.shape[1]
+        self.fdi = FDI(numact=self.n)
         self.controller = AdaptiveISMC_nonlinear(self.plant.J,
                                                  self.plant.m,
                                                  self.plant.g,
@@ -51,7 +51,7 @@ class Env(BaseEnv):
         #     pos_des = np.vstack((0, 0, -5))*10
         # else:
         #     pos_des = np.vstack((0, 0, 0))
-        pos_des = np.vstack((1, 0, -2))
+        pos_des = np.vstack((0, 0, -2))
         vel_des = np.vstack((0, 0, 0))
         # pos_des = np.vstack((cos(t), sin(t), -t))
         # vel_des = np.vstack((-sin(t), cos(t), -1))
@@ -72,10 +72,9 @@ class Env(BaseEnv):
 
         return rotors
 
-    def _get_derivs(self, t, x, p, gamma):
+    def _get_derivs(self, t, x, p, gamma, W):
         ref = self.get_ref(t, x)
-        W = self.fdi.state
-        fault_index = self.fdi.get_index(W)
+        # fault_index = self.fdi.get_index(W)
 
         forces, sliding = self.controller.get_FM(x, ref, p, gamma, t)
 
@@ -85,29 +84,47 @@ class Env(BaseEnv):
         _rotors = np.clip(rotors_cmd, 0, self.plant.rotor_max)
         rotors = deepcopy(_rotors)
 
-        breakpoint()
-        _rotors[fault_index] = 1
-        W = self.fdi.get_W(rotors, _rotors)
+        for act_fault in self.actuator_faults:
+            rotors = act_fault.get(t, rotors)
+            # effectiveness = act_fault.get_effectiveness(t, self.n)
+
+        # W = np.diag(effectiveness)
+        # _rotors[fault_index] = 1
+        # W = self.fdi.get_W(rotors, _rotors)
 
         return rotors_cmd, rotors, forces, ref, sliding
 
     def set_dot(self, t):
         x = self.plant.state
         p, gamma = self.controller.observe_list()
+        for act_fault in self.actuator_faults:
+            effectiveness = act_fault.get_effectiveness(t, self.n)
+
+        W = np.diag(effectiveness)
 
         rotors_cmd, rotors, forces, ref, sliding = \
-            self._get_derivs(t, x, p, gamma)
+            self._get_derivs(t, x, p, gamma, W)
 
         self.plant.set_dot(t, rotors)
         self.controller.set_dot(x, ref, sliding)
 
     def logger_callback(self, i, t, y, *args):
+        d = self.plant.d
+        c = self.plant.c
+        self.plant.mixer.B = np.array([[1, 1, 1, 1],
+                                       [0, -d, 0, d],
+                                       [d, 0, -d, 0],
+                                       [-c, c, -c, c]])
         states = self.observe_dict(y)
         x_flat = self.plant.observe_vec(y[self.plant.flat_index])
         ctrl_flat = self.controller.observe_list(y[self.controller.flat_index])
         x = states["plant"]
+        for act_fault in self.actuator_faults:
+            effectiveness = act_fault.get_effectiveness(t, self.n)
+
+        W = np.diag(effectiveness)
         rotors_cmd, rotors, forces, ref, sliding = \
-            self._get_derivs(t, x_flat, ctrl_flat[0], ctrl_flat[1])
+            self._get_derivs(t, x_flat, ctrl_flat[0], ctrl_flat[1], W)
 
         return dict(t=t, x=x, rotors=rotors, rotors_cmd=rotors_cmd,
                     ref=ref, gamma=ctrl_flat[1], forces=forces)
@@ -236,31 +253,32 @@ def exp1_plot():
 
     plt.tight_layout()
 
-    fig4 = plt.figure()
-    ax1 = fig4.add_subplot(4, 1, 1)
-    ax2 = fig4.add_subplot(4, 1, 2, sharex=ax1)
-    ax3 = fig4.add_subplot(4, 1, 3, sharex=ax1)
-    ax4 = fig4.add_subplot(4, 1, 4, sharex=ax1)
+    # fig4 = plt.figure()
+    # ax1 = fig4.add_subplot(4, 1, 1)
+    # ax2 = fig4.add_subplot(4, 1, 2, sharex=ax1)
+    # ax3 = fig4.add_subplot(4, 1, 3, sharex=ax1)
+    # ax4 = fig4.add_subplot(4, 1, 4, sharex=ax1)
 
-    ax1.plot(data['t'], data['forces'].squeeze()[:, 0])
-    ax2.plot(data['t'], data['forces'].squeeze()[:, 1])
-    ax3.plot(data['t'], data['forces'].squeeze()[:, 2])
-    ax4.plot(data['t'], data['forces'].squeeze()[:, 3])
+    # ax1.plot(data['t'], data['forces'].squeeze()[:, 0])
+    # ax2.plot(data['t'], data['forces'].squeeze()[:, 1])
+    # ax3.plot(data['t'], data['forces'].squeeze()[:, 2])
+    # ax4.plot(data['t'], data['forces'].squeeze()[:, 3])
 
-    ax1.set_ylabel('F')
-    ax1.grid(True)
-    ax2.set_ylabel('M1')
-    ax2.grid(True)
-    ax3.set_ylabel('M2')
-    ax3.grid(True)
-    ax4.set_ylabel('M3')
-    ax4.grid(True)
-    ax4.set_xlabel('Time [sec]')
+    # ax1.set_ylabel('F')
+    # ax1.grid(True)
+    # ax2.set_ylabel('M1')
+    # ax2.grid(True)
+    # ax3.set_ylabel('M2')
+    # ax3.grid(True)
+    # ax4.set_ylabel('M3')
+    # ax4.grid(True)
+    # ax4.set_xlabel('Time [sec]')
 
-    plt.tight_layout()
+    # plt.tight_layout()
+
     plt.show()
 
 
 if __name__ == "__main__":
-    exp1()
+    # exp1()
     exp1_plot()
