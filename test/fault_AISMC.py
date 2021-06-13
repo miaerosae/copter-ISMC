@@ -18,7 +18,7 @@ class Env(BaseEnv):
 
         # Define faults
         self.actuator_faults = [
-            LoE(time=5, index=0, level=0.0),
+            LoE(time=5, index=0, level=0.2),
             # LoE(time=10, index=3, level=0.3)
         ]
 
@@ -36,7 +36,6 @@ class Env(BaseEnv):
                                                  self.plant.d,
                                                  ic,
                                                  ref0)
-        self.CA = CA(self.plant.mixer.B)
 
     def step(self):
         *_, done = self.update()
@@ -51,8 +50,8 @@ class Env(BaseEnv):
         #     pos_des = np.vstack((0, 0, -5))*10
         # else:
         #     pos_des = np.vstack((0, 0, 0))
-        pos_des = np.vstack((0, 0, -2))
-        vel_des = np.vstack((0, 0, 0))
+        pos_des = np.vstack((0, 0, -2-cos(t)))
+        vel_des = np.vstack((0, 0, sin(t)))
         # pos_des = np.vstack((cos(t), sin(t), -t))
         # vel_des = np.vstack((-sin(t), cos(t), -1))
         quat_des = np.vstack((1, 0, 0, 0))
@@ -61,42 +60,14 @@ class Env(BaseEnv):
 
         return ref
 
-    def control_allocation(self, t, forces, W):
-        fault_index = self.fdi.get_index(W)
-
-        if len(fault_index) == 0:
-            rotors = np.linalg.pinv(self.plant.mixer.B.dot(W)).dot(forces)
-        else:
-            Bf = self.CA.get(fault_index)
-            rotors = np.linalg.pinv(Bf.dot(W)).dot(forces)
-
-        d = self.plant.d
-        c = self.plant.c
-        self.plant.mixer.B = np.array([[1, 1, 1, 1],
-                           [0, -d, 0, d],
-                           [d, 0, -d, 0],
-                           [-c, c, -c, c]])
-        return rotors
-
     def _get_derivs(self, t, x, p, gamma, W):
         ref = self.get_ref(t, x)
-        # fault_index = self.fdi.get_index(W)
 
         forces, sliding = self.controller.get_FM(x, ref, p, gamma, t)
 
         # Controller
-        rotors_cmd = self.control_allocation(t, forces, W)
-
-        _rotors = np.clip(rotors_cmd, 0, self.plant.rotor_max)
-        rotors = deepcopy(_rotors)
-
-        for act_fault in self.actuator_faults:
-            rotors = act_fault.get(t, rotors)
-            # effectiveness = act_fault.get_effectiveness(t, self.n)
-
-        # W = np.diag(effectiveness)
-        # _rotors[fault_index] = 1
-        # W = self.fdi.get_W(rotors, _rotors)
+        rotors_cmd = np.linalg.pinv(self.plant.mixer.B.dot(W)).dot(forces)
+        rotors = np.clip(rotors_cmd, 0, self.plant.rotor_max)
 
         return rotors_cmd, rotors, forces, ref, sliding
 
