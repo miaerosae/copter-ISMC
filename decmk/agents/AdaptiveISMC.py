@@ -306,12 +306,12 @@ class AdaptiveISMC_nonlinear(BaseEnv):
                 self.gamma.state[i+1] = 0
 
     def get_FM(self, obs, ref, p, gamma, t):
-        K = np.array([[20, 10],
-                      [40, 10],
-                      [40, 10],
+        K = np.array([[25, 15],
+                      [40, 20],
+                      [40, 20],
                       [20, 10]])
-        Kc = np.vstack((5, 10, 10, 5))
-        PHI = np.vstack((1, 0.5, 0.5, 1))
+        Kc = np.vstack((10, 10, 10, 5))
+        PHI = np.vstack((1, 1, 1, 1))
         self.K = K
         self.Kc = Kc
         self.PHI = PHI
@@ -363,8 +363,8 @@ class AdaptiveISMC_nonlinear(BaseEnv):
         e_xd = xd - xd_r
         e_y = y - y_r
         e_yd = yd - yd_r
-        kp1, kd1, ki1 = np.array([0.1, 0.1, 0.0])
-        kp2, kd2, ki2 = np.array([0.6, 0.5, 0.0])
+        kp1, kd1, ki1 = np.array([0.25, 0.1, 0.1])
+        kp2, kd2, ki2 = np.array([0.25, 0.1, 0.1])
         phi_r = -(kp1*e_y + kd1*e_yd + ki1*py)
         theta_r = kp2*e_x + kd2*e_xd + ki2*px
         # error definition
