@@ -40,15 +40,15 @@ class FDI:
         fault_index = np.where(np.diag(W) < 1)[0]
         return fault_index
 
-    def get_W(self, u, uc):
-        uc = np.clip(uc, 0, None)
-        w = np.hstack([
-            ui/uci if not np.isclose(uci, 0)
-            else 1 if (np.isclose(ui, 0) and np.isclose(uci, 0))
-            else 0
-            for ui, uci in zip(u, uc)])
-        self.state = np.diag(w)
-        return np.diag(w)
+    # def get_W(self, u, uc):
+    #     uc = np.clip(uc, 0, None)
+    #     w = np.hstack([
+    #         ui/uci if not np.isclose(uci, 0)
+    #         else 1 if (np.isclose(ui, 0) and np.isclose(uci, 0))
+    #         else 0
+    #         for ui, uci in zip(u, uc)])
+    #     self.state = np.diag(w)
+    #     return np.diag(w)
 
 
 if __name__ == "__main__":

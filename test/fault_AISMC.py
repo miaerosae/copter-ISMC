@@ -18,7 +18,7 @@ class Env(BaseEnv):
 
         # Define faults
         self.actuator_faults = [
-            LoE(time=0, index=0, level=0.0),
+            LoE(time=5, index=0, level=0.0),
             # LoE(time=10, index=3, level=0.3)
         ]
 
@@ -70,6 +70,12 @@ class Env(BaseEnv):
             Bf = self.CA.get(fault_index)
             rotors = np.linalg.pinv(Bf.dot(W)).dot(forces)
 
+        d = self.plant.d
+        c = self.plant.c
+        self.plant.mixer.B = np.array([[1, 1, 1, 1],
+                           [0, -d, 0, d],
+                           [d, 0, -d, 0],
+                           [-c, c, -c, c]])
         return rotors
 
     def _get_derivs(self, t, x, p, gamma, W):
@@ -109,12 +115,6 @@ class Env(BaseEnv):
         self.controller.set_dot(x, ref, sliding)
 
     def logger_callback(self, i, t, y, *args):
-        d = self.plant.d
-        c = self.plant.c
-        self.plant.mixer.B = np.array([[1, 1, 1, 1],
-                                       [0, -d, 0, d],
-                                       [d, 0, -d, 0],
-                                       [-c, c, -c, c]])
         states = self.observe_dict(y)
         x_flat = self.plant.observe_vec(y[self.plant.flat_index])
         ctrl_flat = self.controller.observe_list(y[self.controller.flat_index])
@@ -280,5 +280,5 @@ def exp1_plot():
 
 
 if __name__ == "__main__":
-    # exp1()
+    exp1()
     exp1_plot()
