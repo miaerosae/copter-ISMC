@@ -14,7 +14,7 @@ from copy import deepcopy
 
 class Env(BaseEnv):
     def __init__(self):
-        super().__init__(solver="odeint", max_t=10, dt=5, ode_step_len=100)
+        super().__init__(solver="odeint", max_t=20, dt=10, ode_step_len=100)
 
         # Define faults
         self.actuator_faults = [
@@ -50,13 +50,15 @@ class Env(BaseEnv):
 
         return ref
 
-    def _get_derivs(self, t, x, p, gamma, L):
+    def _get_derivs(self, t, x, p, gamma, effectiveness):
         ref = self.get_ref(t, x)
 
         forces, sliding = self.controller.get_FM(x, ref, p, gamma, t)
 
         # Controller
-        rotors_cmd = np.linalg.pinv(self.plant.mixer.B.dot(L)).dot(forces)
+        Bf = self.plant.mixer.B * effectiveness
+        L = np.diag(effectiveness)
+        rotors_cmd = np.linalg.pinv(Bf.dot(L)).dot(forces)
         rotors = np.clip(rotors_cmd, 0, self.plant.rotor_max)
 
         return rotors_cmd, rotors, forces, ref, sliding
@@ -68,10 +70,8 @@ class Env(BaseEnv):
         for act_fault in self.actuator_faults:
             effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
-        L = np.diag(effectiveness)
-
         rotors_cmd, rotors, forces, ref, sliding = \
-            self._get_derivs(t, x, p, gamma, L)
+            self._get_derivs(t, x, p, gamma, effectiveness)
 
         self.plant.set_dot(t, rotors)
         self.controller.set_dot(x, ref, sliding)
@@ -85,9 +85,8 @@ class Env(BaseEnv):
         for act_fault in self.actuator_faults:
             effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
-        L = np.diag(effectiveness)
         rotors_cmd, rotors, forces, ref, sliding = \
-            self._get_derivs(t, x_flat, ctrl_flat[0], ctrl_flat[1], L)
+            self._get_derivs(t, x_flat, ctrl_flat[0], ctrl_flat[1], effectiveness)
 
         return dict(t=t, x=x, rotors=rotors, rotors_cmd=rotors_cmd,
                     ref=ref, gamma=ctrl_flat[1], forces=forces)
@@ -95,7 +94,7 @@ class Env(BaseEnv):
 
 def run():
     env = Env()
-    env.logger = fym.logging.Logger("data.h5")
+    env.logger = fym.logging.Logger("case3_A.h5")
 
     env.reset()
 
@@ -172,10 +171,10 @@ def exp1_plot():
                  arrowprops=dict(arrowstyle='->', lw=1.5))
 
     plt.subplot(413, sharex=ax)
-    # plt.plot(data["t"], data["x"]["quat"].squeeze())
-    # plt.legend([r'$q0$', r'$q1$', r'$q2$', r'$q3$'])
-    plt.plot(data["t"], np.transpose(quat2angle(np.transpose(data["x"]["quat"].squeeze()))))
-    plt.legend([r'$psi$', r'$theta$', r'$phi$'], loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.plot(data["t"], data["x"]["quat"].squeeze())
+    plt.legend([r'$q0$', r'$q1$', r'$q2$', r'$q3$'])
+    # plt.plot(data["t"], np.transpose(quat2angle(np.transpose(data["x"]["quat"].squeeze()))))
+    # plt.legend([r'$psi$', r'$theta$', r'$phi$'], loc='center left', bbox_to_anchor=(1, 0.5))
     plt.axvspan(5, 5.042, alpha=0.2, color="b")
     plt.axvline(5.042, alpha=0.8, color="b", linewidth=0.5)
     plt.annotate("Rotor 0 fails", xy=(5, 0), xytext=(5.5, 0.5),
@@ -263,4 +262,4 @@ def exp1_plot():
 
 if __name__ == "__main__":
     exp1()
-    exp1_plot()
+    # exp1_plot()
