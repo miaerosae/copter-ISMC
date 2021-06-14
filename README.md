@@ -13,28 +13,11 @@
 -------------------
 
 ## Controller 
+> LQR
+> 
 > integral sliding mode
 > 
 > Adaptive Integral sliding mode
 > 
-> pd controller (to make phi, theta reference)
-
-
------------------
-
-## code file
-### plant
-```
-copter.py
-```
-
-### Controller
-+ Integral sliding mode controller
-```
-ISMC.py
-```
-+ Adaptive sliding mode controller
-```
-AdapticeISMC.py
-```
+> pd controller (to track x, y)
 
