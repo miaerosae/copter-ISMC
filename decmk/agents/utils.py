@@ -9,7 +9,7 @@ class LoE:
 
     def get(self, t, u):
         effectiveness = self.get_effectiveness(t, u.shape[0])
-        return u * effectiveness.reshape(4, 1)  # , effectiveness
+        return u * effectiveness.reshape(4, 1)
 
     def get_effectiveness(self, t, effectiveness):
         if t >= self.time:
