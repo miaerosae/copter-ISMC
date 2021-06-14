@@ -180,12 +180,12 @@ class IntegralSMC_nonlinear(BaseEnv):
         self.P.dot = dot
 
     def get_FM(self, obs, ref, p, t):
-        K = np.array([[10, 10],
-                      [10, 20],
-                      [10, 20],
-                      [20, 10]])
-        Kc = np.vstack((5, 10, 10, 5))
-        PHI = np.vstack((0.5, 1, 0.5, 0.5))*0.1
+        K = np.array([[25, 15],
+                      [40, 20],
+                      [40, 20],
+                      [1, 1]])
+        Kc = np.vstack((15, 15, 15, 10))
+        PHI = np.vstack((0.8, 0.1, 0.1, 1))
         p = np.vstack((p))
         px, py, pz, pphi, ptheta, ppsi = p
         K1, K2, K3, K4 = K
@@ -220,14 +220,14 @@ class IntegralSMC_nonlinear(BaseEnv):
         z0_r, z0d_r = self.ref0_[2], self.ref0_[5]
         phi0_r, theta0_r, psi0_r, phi0d_r, theta0d_r, psi0d_r = self.ref0_[6:]
         # PD control for position tracking (get phi_ref, theta_ref)
-        # e_x = x - x_r
-        # e_xd = xd - xd_r
-        # e_y = y - y_r
-        # e_yd = yd - yd_r
-        # kp1, kd1, ki1 = np.array([0.01, 0.01, 0.01])
-        # kp2, kd2, ki2 = np.array([0.01, 0.01, 0.01])
-        # phi_r = -(kp1*e_y + kd1*e_yd + ki1*py)
-        # theta_r = kp2*e_x + kd2*e_xd + ki2*px
+        e_x = x - x_r
+        e_xd = xd - xd_r
+        e_y = y - y_r
+        e_yd = yd - yd_r
+        kp1, kd1, ki1 = np.array([0.25, 0.11, 0.045])
+        kp2, kd2, ki2 = np.array([0.25, 0.13, 0.03])
+        phi_r = -(kp1*e_y + kd1*e_yd + ki1*py)
+        theta_r = kp2*e_x + kd2*e_xd + ki2*px
         # error definition
         e_z = z - z_r
         e_zd = zd - zd_r
