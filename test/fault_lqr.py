@@ -43,8 +43,8 @@ class Env(BaseEnv):
         #     pos_des = np.vstack((0, 0, -5))*10
         # else:
         #     pos_des = np.vstack((0, 0, 0))
-        pos_des = np.vstack((0, -0, -2-cos(t)))
-        vel_des = np.vstack((0, 0, sin(t)))
+        pos_des = np.vstack((1, -1, -2))
+        vel_des = np.vstack((0, 0, 0))
         # pos_des = np.vstack((cos(t), sin(t), -1*t))
         # vel_des = np.vstack((-sin(t), cos(t), -1))
         quat_des = np.vstack((1, 0, 0, 0))
@@ -53,13 +53,13 @@ class Env(BaseEnv):
 
         return ref
 
-    def _get_derivs(self, t, x, W):
+    def _get_derivs(self, t, x, L):
         ref = self.get_ref(t, x)
 
         forces = self.controller.get_FM(x, ref)
 
         # Controller
-        rotors_cmd = np.linalg.pinv(self.plant.mixer.B.dot(W)).dot(forces)
+        rotors_cmd = np.linalg.pinv(self.plant.mixer.B.dot(L)).dot(forces)
         rotors = np.clip(rotors_cmd, 0, self.plant.rotor_max)
 
         return rotors_cmd, rotors, forces, ref
@@ -70,8 +70,8 @@ class Env(BaseEnv):
         for act_fault in self.actuator_faults:
             effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
-        W = np.diag(effectiveness)
-        rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, W)
+        L = np.diag(effectiveness)
+        rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, L)
 
         self.plant.set_dot(t, rotors)
 
@@ -81,8 +81,8 @@ class Env(BaseEnv):
         for act_fault in self.actuator_faults:
             effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
-        W = np.diag(effectiveness)
-        rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, W)
+        L = np.diag(effectiveness)
+        rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, L)
         return dict(t=t, **self.observe_dict(), forces=forces, rotors=rotors,
                     rotors_cmd=rotors_cmd, ref=ref)
 

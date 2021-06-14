@@ -14,17 +14,17 @@ from copy import deepcopy
 
 class Env(BaseEnv):
     def __init__(self):
-        super().__init__(solver="odeint", max_t=20, dt=10, ode_step_len=100)
+        super().__init__(solver="odeint", max_t=10, dt=5, ode_step_len=100)
 
         # Define faults
         self.actuator_faults = [
-            LoE(time=0, index=0, level=0.1),
-            LoE(time=0, index=3, level=0.3)
+            LoE(time=5, index=0, level=0.0),
+            # LoE(time=10, index=3, level=0.3)
         ]
 
         # Define initial condition and reference at t=0
         ic = np.vstack((0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0))
-        ref0 = np.vstack((0, 0, -2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0))
+        ref0 = np.vstack((1, -1, -2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0))
 
         # Define agents
         self.plant = Copter_nonlinear()
@@ -42,31 +42,21 @@ class Env(BaseEnv):
         return done
 
     def get_ref(self, t, x):
-        # if t <= 5:
-        #     pos_des = np.vstack((0, 0, -5))*10
-        # elif 5 < t and t <= 10:
-        #     pos_des = np.vstack((0, 0, -10))*10
-        # elif 10 < t and t <= 15:
-        #     pos_des = np.vstack((0, 0, -5))*10
-        # else:
-        #     pos_des = np.vstack((0, 0, 0))
-        pos_des = np.vstack((0, 0, -2-cos(t)))
-        vel_des = np.vstack((0, 0, sin(t)))
-        # pos_des = np.vstack((cos(t), sin(t), -0.1*t))
-        # vel_des = np.vstack((-sin(t), cos(t), -0.1))
+        pos_des = np.vstack((1, -1, -2))
+        vel_des = np.vstack((0, 0, 0))
         quat_des = np.vstack((1, 0, 0, 0))
         omega_des = np.zeros((3, 1))
         ref = np.vstack((pos_des, vel_des, quat_des, omega_des))
 
         return ref
 
-    def _get_derivs(self, t, x, p, W):
+    def _get_derivs(self, t, x, p, L):
         ref = self.get_ref(t, x)
 
         forces = self.controller.get_FM(x, ref, p, t)
 
         # Controller
-        rotors_cmd = np.linalg.pinv(self.plant.mixer.B.dot(W)).dot(forces)
+        rotors_cmd = np.linalg.pinv(self.plant.mixer.B.dot(L)).dot(forces)
         rotors = np.clip(rotors_cmd, 0, self.plant.rotor_max)
 
         return rotors_cmd, rotors, forces, ref
@@ -79,9 +69,9 @@ class Env(BaseEnv):
         for act_fault in self.actuator_faults:
             effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
-        W = np.diag(effectiveness)
+        L = np.diag(effectiveness)
 
-        rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, p, W)
+        rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, p, L)
 
         self.plant.set_dot(t, rotors)
         self.controller.set_dot(x, ref)
@@ -95,8 +85,8 @@ class Env(BaseEnv):
         for act_fault in self.actuator_faults:
             effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
-        W = np.diag(effectiveness)
-        rotors_cmd, rotors, forces, ref = self._get_derivs(t, x_flat, p, W)
+        L = np.diag(effectiveness)
+        rotors_cmd, rotors, forces, ref = self._get_derivs(t, x_flat, p, L)
 
         return dict(t=t, x=x, rotors=rotors, rotors_cmd=rotors_cmd,
                     ref=ref)
@@ -131,23 +121,23 @@ def exp1_plot():
     ax = plt.subplot(411)
     plt.plot(data["t"], data["rotors"][:, 0], "k-", label="Response")
     plt.plot(data["t"], data["rotors_cmd"][:, 0], "r--", label="Command")
-    plt.ylim([-5.1, 40])
+    plt.ylim([-5.1, 45])
     plt.legend()
 
     plt.subplot(412, sharex=ax)
     plt.plot(data["t"], data["rotors"][:, 1], "k-")
     plt.plot(data["t"], data["rotors_cmd"][:, 1], "r--")
-    plt.ylim([-5.1, 40])
+    plt.ylim([-5.1, 45])
 
     plt.subplot(413, sharex=ax)
     plt.plot(data["t"], data["rotors"][:, 2], "k-")
     plt.plot(data["t"], data["rotors_cmd"][:, 2], "r--")
-    plt.ylim([-5.1, 40])
+    plt.ylim([-5.1, 45])
 
     plt.subplot(414, sharex=ax)
     plt.plot(data["t"], data["rotors"][:, 3], "k-")
     plt.plot(data["t"], data["rotors_cmd"][:, 3], "r--")
-    plt.ylim([-5.1, 40])
+    plt.ylim([-5.1, 45])
 
     plt.gcf().supxlabel("Time, sec")
     plt.gcf().supylabel("Rotor force")
@@ -160,36 +150,46 @@ def exp1_plot():
     plt.plot(data["t"], data["x"]["pos"][:, 0, 0], label="x")
 
     plt.plot(data["t"], data["ref"][:, 1, 0], "r--", label="y (cmd)")
-    plt.plot(data["t"], data["x"]["pos"][:, 1, 0], "--", label="y")
+    plt.plot(data["t"], data["x"]["pos"][:, 1, 0], label="y")
 
     plt.plot(data["t"], data["ref"][:, 2, 0], "r-.", label="z (cmd)")
     plt.plot(data["t"], data["x"]["pos"][:, 2, 0], label="z")
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    plt.axvspan(5, 5.042, alpha=0.2, color="b")
+    plt.axvline(5.042, alpha=0.8, color="b", linewidth=0.5)
+    plt.annotate("Rotor 0 fails", xy=(5, 0), xytext=(5.5, 0.5),
+                 arrowprops=dict(arrowstyle='->', lw=1.5))
 
     plt.subplot(412, sharex=ax)
     plt.plot(data["t"], data["x"]["vel"].squeeze())
-    plt.legend([r'$u$', r'$v$', r'$w$'])
+    plt.legend([r'$u$', r'$v$', r'$w$'], loc='center left', bbox_to_anchor=(1, 0.5))
+
+    plt.axvspan(5, 5.042, alpha=0.2, color="b")
+    plt.axvline(5.042, alpha=0.8, color="b", linewidth=0.5)
+    plt.annotate("Rotor 0 fails", xy=(5, 0), xytext=(5.5, 0.5),
+                 arrowprops=dict(arrowstyle='->', lw=1.5))
+
     plt.subplot(413, sharex=ax)
-    plt.plot(data["t"], data["x"]["quat"].squeeze())
-    plt.legend([r'$q0$', r'$q1$', r'$q2$', r'$q3$'])
-    # plt.plot(data["t"], np.transpose(quat2angle(np.transpose(data["x"]["quat"].squeeze()))))
-    # plt.legend([r'$psi$', r'$theta$', r'$phi$'])
+    # plt.plot(data["t"], data["x"]["quat"].squeeze())
+    # plt.legend([r'$q0$', r'$q1$', r'$q2$', r'$q3$'])
+    plt.plot(data["t"], np.transpose(quat2angle(np.transpose(data["x"]["quat"].squeeze()))))
+    plt.legend([r'$psi$', r'$theta$', r'$phi$'], loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.axvspan(5, 5.042, alpha=0.2, color="b")
+    plt.axvline(5.042, alpha=0.8, color="b", linewidth=0.5)
+    plt.annotate("Rotor 0 fails", xy=(5, 0), xytext=(5.5, 0.5),
+                 arrowprops=dict(arrowstyle='->', lw=1.5))
+
     plt.subplot(414, sharex=ax)
     plt.plot(data["t"], data["x"]["omega"].squeeze())
-    plt.legend([r'$p$', r'$q$', r'$r$'])
-    # plt.axvspan(3, 3.042, alpha=0.2, color="b")
-    # plt.axvline(3.042, alpha=0.8, color="b", linewidth=0.5)
-
-    # plt.axvspan(6, 6.011, alpha=0.2, color="b")
-    # plt.axvline(6.011, alpha=0.8, color="b", linewidth=0.5)
-
-    # plt.annotate("Rotor 0 fails", xy=(3, 0), xytext=(3.5, 0.5),
-    #              arrowprops=dict(arrowstyle='->', lw=1.5))
-    # plt.annotate("Rotor 2 fails", xy=(6, 0), xytext=(7.5, 0.2),
-    #              arrowprops=dict(arrowstyle='->', lw=1.5))
+    plt.legend([r'$p$', r'$q$', r'$r$'], loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.axvspan(5, 5.042, alpha=0.2, color="b")
+    plt.axvline(5.042, alpha=0.8, color="b", linewidth=0.5)
+    plt.annotate("Rotor 0 fails", xy=(5, 0), xytext=(5.5, 0.5),
+                 arrowprops=dict(arrowstyle='->', lw=1.5))
 
     # plt.xlabel("Time, sec")
     # plt.ylabel("Position")
-    # plt.legend(loc="right")
     plt.tight_layout()
 
     plt.show()
