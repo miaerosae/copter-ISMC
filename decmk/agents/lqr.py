@@ -1,9 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.linalg as lin
-import numpy.linalg as nla
 
-from fym.utils.rot import quat2angle
+from decmk.agents.utils import quat2angle
 
 
 def LQR(A: np.array, B: np.array, Q: np.array, R: np.array, with_eigs=False) \
@@ -12,9 +11,9 @@ def LQR(A: np.array, B: np.array, Q: np.array, R: np.array, with_eigs=False) \
     if np.size(R) == 1:
         K = (np.transpose(B).dot(P)) / R
     else:
-        K = nla.inv(R).dot((np.transpose(B).dot(P)))
+        K = np.linalg.inv(R).dot((np.transpose(B).dot(P)))
 
-    eig_vals, eig_vecs = nla.eig(A - B.dot(K))
+    eig_vals, eig_vecs = np.linalg.eig(A - B.dot(K))
 
     if with_eigs:
         return K, P, eig_vals, eig_vecs
@@ -31,6 +30,10 @@ class LQRController:
         self.m, self.g = m, g
         self.trim_forces = np.vstack([self.m * self.g, 0, 0, 0])
 
+        '''
+        linearized condition near trim pt
+        state variables with {pos, vel, Euler angle, omega}
+        '''
         A = np.array([[0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
                       [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
                       [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
@@ -59,9 +62,7 @@ class LQRController:
         self.K, *_ = LQR(A, B, Q, R)
 
     def transform(self, y):
-        """
-        y = pos, vel, quat, omega
-        """
+        # input comes in a form {pos, vel, quat, omega}
         if len(y) == 13:
             return np.vstack((y[0:6],
                               np.vstack(quat2angle(y[6:10])[::-1]), y[10:]))
@@ -71,3 +72,7 @@ class LQRController:
         x_ref = self.transform(ref)
         forces = -self.K.dot(x - x_ref) + self.trim_forces
         return forces
+
+
+if __name__ == "__main__":
+    pass

@@ -2,7 +2,7 @@ import numpy as np
 from numpy import cos
 
 from fym.core import BaseEnv, BaseSystem
-from fym.utils.rot import quat2angle
+from decmk.agents.utils import quat2angle
 
 
 def sat(s, eps):

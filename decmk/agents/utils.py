@@ -26,6 +26,19 @@ class FDI:
         return fault_index
 
 
+def quat2angle(quat):
+    """Output: yaw, pitch, roll"""
+    qin = (quat / np.linalg.norm(quat)).squeeze()
+
+    r11 = 2 * (qin[1] * qin[2] + qin[0] * qin[3])
+    r12 = qin[0]**2 + qin[1]**2 - qin[2]**2 - qin[3]**2
+    r21 = - 2 * (qin[1] * qin[3] - qin[0] * qin[2])
+    r31 = 2 * (qin[2] * qin[3] + qin[0] * qin[1])
+    r32 = qin[0]**2 - qin[1]**2 - qin[2]**2 + qin[3]**2
+
+    return np.arctan2(r11, r12), np.arcsin(r21), np.arctan2(r31, r32)
+
+
 if __name__ == "__main__":
     t = 4
     loe = LoE(time=3, index=0, level=0.5)
