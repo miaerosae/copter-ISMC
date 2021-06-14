@@ -73,6 +73,7 @@ class Env(BaseEnv):
             effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
         rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, effectiveness)
+
         return dict(t=t, **self.observe_dict(), forces=forces, rotors=rotors,
                     rotors_cmd=rotors_cmd, ref=ref)
 
