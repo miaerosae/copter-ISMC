@@ -309,7 +309,7 @@ class AdaptiveISMC_nonlinear(BaseEnv):
         K = np.array([[25, 15],
                       [40, 20],
                       [40, 20],
-                      [5, 5]])
+                      [1, 1]])
         Kc = np.vstack((15, 15, 15, 10))
         PHI = np.vstack((0.8, 0.1, 0.1, 1))
         self.K = K
