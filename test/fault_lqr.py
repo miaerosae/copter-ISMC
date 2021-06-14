@@ -35,31 +35,23 @@ class Env(BaseEnv):
         return done
 
     def get_ref(self, t, x):
-        # if t <= 5:
-        #     pos_des = np.vstack((0, 0, -5))*10
-        # elif 5 < t and t <= 10:
-        #     pos_des = np.vstack((0, 0, -10))*10
-        # elif 10 < t and t <= 15:
-        #     pos_des = np.vstack((0, 0, -5))*10
-        # else:
-        #     pos_des = np.vstack((0, 0, 0))
         pos_des = np.vstack((1, -1, -2))
         vel_des = np.vstack((0, 0, 0))
-        # pos_des = np.vstack((cos(t), sin(t), -1*t))
-        # vel_des = np.vstack((-sin(t), cos(t), -1))
         quat_des = np.vstack((1, 0, 0, 0))
         omega_des = np.zeros((3, 1))
         ref = np.vstack((pos_des, vel_des, quat_des, omega_des))
 
         return ref
 
-    def _get_derivs(self, t, x, L):
+    def _get_derivs(self, t, x, effectiveness):
         ref = self.get_ref(t, x)
 
         forces = self.controller.get_FM(x, ref)
 
         # Controller
-        rotors_cmd = np.linalg.pinv(self.plant.mixer.B.dot(L)).dot(forces)
+        Bf = self.plant.mixer.B * effectiveness
+        L = np.diag(effectiveness)
+        rotors_cmd = np.linalg.pinv(Bf.dot(L)).dot(forces)
         rotors = np.clip(rotors_cmd, 0, self.plant.rotor_max)
 
         return rotors_cmd, rotors, forces, ref
@@ -70,8 +62,7 @@ class Env(BaseEnv):
         for act_fault in self.actuator_faults:
             effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
-        L = np.diag(effectiveness)
-        rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, L)
+        rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, effectiveness)
 
         self.plant.set_dot(t, rotors)
 
@@ -81,8 +72,8 @@ class Env(BaseEnv):
         for act_fault in self.actuator_faults:
             effectiveness = act_fault.get_effectiveness(t, effectiveness)
 
-        L = np.diag(effectiveness)
-        rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, L)
+        rotors_cmd, rotors, forces, ref = self._get_derivs(t, x, effectiveness)
+
         return dict(t=t, **self.observe_dict(), forces=forces, rotors=rotors,
                     rotors_cmd=rotors_cmd, ref=ref)
 
