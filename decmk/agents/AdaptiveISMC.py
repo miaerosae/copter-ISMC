@@ -307,11 +307,11 @@ class AdaptiveISMC_nonlinear(BaseEnv):
 
     def get_FM(self, obs, ref, p, gamma, t):
         K = np.array([[25, 15],
-                      [40, 20],
-                      [40, 20],
-                      [1, 1]])
+                      [45, 30],
+                      [45, 30],
+                      [10, 10]])
         Kc = np.vstack((15, 15, 15, 10))
-        PHI = np.vstack((0.8, 0.1, 0.1, 1))
+        PHI = np.vstack((0.5, 0.1, 0.1, 0.3))
         self.K = K
         self.Kc = Kc
         self.PHI = PHI

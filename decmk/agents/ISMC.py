@@ -181,11 +181,11 @@ class IntegralSMC_nonlinear(BaseEnv):
 
     def get_FM(self, obs, ref, p, t):
         K = np.array([[25, 15],
-                      [40, 20],
-                      [40, 20],
-                      [1, 1]])
+                      [45, 30],
+                      [40, 30],
+                      [10, 10]])
         Kc = np.vstack((15, 15, 15, 10))
-        PHI = np.vstack((0.8, 0.1, 0.1, 1))
+        PHI = np.vstack((0.5, 0.1, 0.1, 0.3))
         p = np.vstack((p))
         px, py, pz, pphi, ptheta, ppsi = p
         K1, K2, K3, K4 = K
