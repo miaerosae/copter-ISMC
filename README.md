@@ -1,4 +1,4 @@
-# copter-ISMC
+# FTC-copter
 
 ## plant 
 ### quadcopter 
